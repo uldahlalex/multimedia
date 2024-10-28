@@ -19,7 +19,7 @@ public class ObjectsWithImageController : ControllerBase
 
     [HttpPost]
     [Route("objectsWithImages")]
-    public async Task<IActionResult> Upload([FromForm] IFormFile file)
+    public async Task<ActionResult<ObjectWithImageResponse>> Upload([FromForm] IFormFile file)
     {
         if (file == null || file.Length == 0)
             return BadRequest("No file uploaded");
@@ -27,14 +27,11 @@ public class ObjectsWithImageController : ControllerBase
 
         const string bucketName = "easvstorage";
 
-        // Generate a unique filename
         var fileName = $"{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
 
-        // Upload directly from the IFormFile stream
         using (var stream = file.OpenReadStream())
         {
-            // Upload to Google Cloud Storage using the initialized client
-            var uploadedObject = await _storageClient.UploadObjectAsync(bucketName, fileName,
+             await _storageClient.UploadObjectAsync(bucketName, fileName,
                 file.ContentType, stream);
 
             var publicUrl = $"https://storage.googleapis.com/{bucketName}/{fileName}";
@@ -48,4 +45,23 @@ public class ObjectsWithImageController : ControllerBase
             return Ok(response);
         }
     }
+
+    [HttpGet]
+    [Route("objectsWithImages")]
+    public async Task<ActionResult<IEnumerable<ObjectWithImageResponse>>> Get()
+    {
+        const string bucketName = "easvstorage";
+        var objects = _storageClient.ListObjects(bucketName, null);
+        var response = new List<ObjectWithImageResponse>();
+        foreach (var storageObject in objects)
+        {
+            response.Add(new ObjectWithImageResponse
+            {
+                Title = storageObject.Name,
+                ImageUrl = $"https://storage.googleapis.com/{bucketName}/{storageObject.Name}"
+            });
+        }
+        return Ok(response);
+    }
+    
 }
